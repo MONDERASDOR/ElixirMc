@@ -25,13 +25,13 @@
 ### Build Instructions
 ```bash
 # Clone the build tools
-git clone https://github.com/Sunpowder/ElixirMC-Builder.git
-cd ElixirMC-Builder
+git clone https://github.com/MONDERASDOR/ElixirMc.git
+cd ElixirMc
 
 # Run the automated build
 ./build.sh
 
-# Your optimized server will be at:
+# Your elixir server will be :
 # Elixir-1.21.4-Alpha.jar
 ```
 
@@ -76,7 +76,7 @@ graph TD
 
 ## 🚀 Getting Started
 
-1. **Download** the latest build from [GitHub Releases]
+1. **Download** the latest builder from [here](https://github.com/MONDERASDOR/ElixirMc/README.md)
 2. **Configure** your `elixir.yml`
 3. **Launch** with:
    ```bash
@@ -90,7 +90,7 @@ ElixirMC is licensed under GPL-3.0 - *Because open source matters*
 
 ---
 
-> "We didn't just optimize Minecraft - we reimagined server performance"  
+> "I didn't just optimize Minecraft - I improved server performance"  
 > - Sunpowder, Lead Developer
 
 ---
