@@ -23,7 +23,9 @@ subprojects {
     apply(plugin = "java")
 
     java {
-        toolchain { languageVersion.set(JavaLanguageVersion.of(21)) }
+        toolchain { 
+            languageVersion.set(JavaLanguageVersion.of(21))
+        }
     }
 
     tasks.withType<JavaCompile>().configureEach {
@@ -45,7 +47,7 @@ subprojects {
 }
 
 paperweight {
-    serverProject.set(project(":pufferfish-server"))
+    serverProject.set(project(":elixir-server"))
 
     remapRepo.set("https://maven.fabricmc.net/")
     decompileRepo.set("https://files.minecraftforge.net/maven/")
@@ -54,9 +56,8 @@ paperweight {
         withPaperPatcher {
             apiPatchDir.set(layout.projectDirectory.dir("patches/api"))
             serverPatchDir.set(layout.projectDirectory.dir("patches/server"))
-
-            apiOutputDir.set(layout.projectDirectory.dir("pufferfish-api"))
-            serverOutputDir.set(layout.projectDirectory.dir("pufferfish-server"))
+            apiOutputDir.set(layout.projectDirectory.dir("elixir-api"))
+            serverOutputDir.set(layout.projectDirectory.dir("elixir-server"))
         }
 
         patchTasks.register("generatedApi") {
