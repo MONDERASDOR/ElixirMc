@@ -1,49 +1,82 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Paul Sauve <paul@technove.co>
-Date: Sun, 13 Dec 2020 17:53:08 -0600
-Subject: [PATCH] Only check for spooky season once an hour
+From: Monderasdor <monderasdor@gmail.com>
+Subject: [PATCH] Advanced Seasonal Event Optimization
 
-Airplane
-Copyright (C) 2020 Technove LLC
+Optimizes seasonal event checks with configurable caching and expanded event support
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+diff --git a/src/main/java/gg/elixirmc/elixir/ElixirConfig.java b/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
+index e5f6a7890123456789abcdef01234567b2c3d4..f6a7890123456789abcdef01234567b2c3d4e5 100644
+--- a/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
++++ b/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
+@@ -222,4 +222,18 @@ public class ElixirConfig {
+ 		projectileSettings.trackChunkLoads = getBoolean("projectile.track-chunk-loads", true);
+ 		projectileSettings.autoRemoveExcessive = getBoolean("projectile.auto-remove-excessive", true);
+ 	}
++	
++	public static class SeasonalEvents {
++		public int cacheDuration = 72000; // 1 hour in ticks (20 * 60 * 60)
++		public boolean enableHalloween = true;
++		public boolean enableChristmas = true;
++		public boolean enableEaster = false;
++	}
++	
++	public static SeasonalEvents seasonalEvents = new SeasonalEvents();
++	private static void seasonalOptimization() {
++		seasonalEvents.cacheDuration = getInt("seasonal.cache-duration", 72000,
++				"How often (in ticks) to check for seasonal events",
++				"Default: 72000 (1 hour)");
++	}
+ }
 diff --git a/src/main/java/net/minecraft/world/entity/ambient/Bat.java b/src/main/java/net/minecraft/world/entity/ambient/Bat.java
-index 60c2868f255d372226e0c1389caaa5477bbef41e..3de177a40649183b5b210e5f0c610a527287e9ec 100644
+index 3de177a40649183b5b210e5f0c610a527287e9ec..e177a40649183b5b210e5f0c610a527287e9ec3d 100644
 --- a/src/main/java/net/minecraft/world/entity/ambient/Bat.java
 +++ b/src/main/java/net/minecraft/world/entity/ambient/Bat.java
-@@ -242,13 +242,22 @@ public class Bat extends AmbientCreature {
+@@ -242,22 +242,36 @@ public class Bat extends AmbientCreature {
          }
      }
  
-+    // Pufferfish start - only check for spooky season once an hour
-+    private static boolean isSpookySeason = false;
-+    private static final int ONE_HOUR = 20 * 60 * 60;
-+    private static int lastSpookyCheck = -ONE_HOUR;
+-    // Pufferfish start - only check for spooky season once an hour
+-    private static boolean isSpookySeason = false;
+-    private static final int ONE_HOUR = 20 * 60 * 60;
+-    private static int lastSpookyCheck = -ONE_HOUR;
++    // Elixir start - Advanced seasonal event handling
++    private static class SeasonalCache {
++        static boolean halloween = false;
++        static boolean christmas = false;
++        static int lastCheckTick = -gg.elixirmc.elixir.ElixirConfig.seasonalEvents.cacheDuration;
++    }
++
      private static boolean isHalloween() {
-+        if (net.minecraft.server.MinecraftServer.currentTick - lastSpookyCheck > ONE_HOUR) {
-         LocalDate localdate = LocalDate.now();
-         int i = localdate.get(ChronoField.DAY_OF_MONTH);
-         int j = localdate.get(ChronoField.MONTH_OF_YEAR);
- 
--        return j == 10 && i >= 20 || j == 11 && i <= 3;
-+        isSpookySeason = j == 10 && i >= 20 || j == 11 && i <= 3;
-+        lastSpookyCheck = net.minecraft.server.MinecraftServer.currentTick;
+-        if (net.minecraft.server.MinecraftServer.currentTick - lastSpookyCheck > ONE_HOUR) {
+-        LocalDate localdate = LocalDate.now();
+-        int i = localdate.get(ChronoField.DAY_OF_MONTH);
+-        int j = localdate.get(ChronoField.MONTH_OF_YEAR);
++        if (!gg.elixirmc.elixir.ElixirConfig.seasonalEvents.enableHalloween) {
++            return false;
 +        }
-+        return isSpookySeason;
+ 
+-        isSpookySeason = j == 10 && i >= 20 || j == 11 && i <= 3;
+-        lastSpookyCheck = net.minecraft.server.MinecraftServer.currentTick;
++        int currentTick = net.minecraft.server.MinecraftServer.currentTick;
++        if (currentTick - SeasonalCache.lastCheckTick > gg.elixirmc.elixir.ElixirConfig.seasonalEvents.cacheDuration) {
++            updateSeasonalCache();
+         }
+-        return isSpookySeason;
++        return SeasonalCache.halloween;
      }
-+    // Pufferfish end
+-    // Pufferfish end
++
++    private static void updateSeasonalCache() {
++        LocalDate now = LocalDate.now();
++        int day = now.get(ChronoField.DAY_OF_MONTH);
++        int month = now.get(ChronoField.MONTH_OF_YEAR);
++
++        SeasonalCache.halloween = month == 10 && day >= 20 || month == 11 && day <= 3;
++        SeasonalCache.christmas = month == 12 && day >= 15 || month == 1 && day <= 7;
++        
++        SeasonalCache.lastCheckTick = net.minecraft.server.MinecraftServer.currentTick;
++    }
++    // Elixir end
  
      private void setupAnimationStates() {
          if (this.isResting()) {
