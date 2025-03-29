@@ -29,7 +29,7 @@ git clone https://github.com/MONDERASDOR/ElixirMc.git
 cd ElixirMc
 
 # Run the automated build in scripts folder
-./apatchs.sh
+./apatch.sh
 
 # Your elixir server will be :
 # Elixir-1.21.4-Alpha.jar
