@@ -1,18 +1,18 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Kevin Raneri <kevin.raneri@gmail.com>
+From: monderasdor <monderasdor@gmail.com>
 Date: Tue, 8 Feb 2022 12:53:02 -0500
 Subject: [PATCH] Optimize map rendering
 
 This patch does not add any API that should be used by plugins. Any
 classes and methods added by this patch should NOT be used in plugins.
 
-diff --git a/src/main/java/gg/pufferfish/pufferfish/simd/VectorMapPalette.java b/src/main/java/gg/pufferfish/pufferfish/simd/VectorMapPalette.java
+diff --git a/src/main/java/gg/elixirmc/elixir/simd/VectorMapPalette.java b/src/main/java/gg/elixirmc/elixir/simd/VectorMapPalette.java
 new file mode 100644
 index 0000000000000000000000000000000000000000..ae2464920c9412ac90b819a540ee58be0741465f
 --- /dev/null
-+++ b/src/main/java/gg/pufferfish/pufferfish/simd/VectorMapPalette.java
++++ b/src/main/java/gg/elixirmc/elixir/simd/VectorMapPalette.java
 @@ -0,0 +1,83 @@
-+package gg.pufferfish.pufferfish.simd;
++package gg.elixirmc.elixir.simd;
 +
 +import java.awt.Color;
 +import jdk.incubator.vector.FloatVector;
@@ -103,7 +103,7 @@ index 55a46db9d73885ea967ac929013906b687e476bb..b99796629100c7d5fff1b7f84026001e
  package org.bukkit.map;
  
  import com.google.common.base.Preconditions;
-+import gg.pufferfish.pufferfish.simd.SIMDDetection; // Pufferfish
++import gg.elixirmc.elixir.simd.SIMDDetection; // Elixir
  import java.awt.Color;
  import java.awt.Graphics2D;
  import java.awt.Image;
@@ -112,7 +112,7 @@ index 55a46db9d73885ea967ac929013906b687e476bb..b99796629100c7d5fff1b7f84026001e
  
      @NotNull
 -    static final Color[] colors = {
-+    public static final Color[] colors = { // Pufferfish - public access
++    public static final Color[] colors = { // Elixir - public access
          c(0, 0, 0, 0), c(0, 0, 0, 0), c(0, 0, 0, 0), c(0, 0, 0, 0),
          c(89, 125, 39), c(109, 153, 48), c(127, 178, 56), c(67, 94, 29),
          c(174, 164, 115), c(213, 201, 140), c(247, 233, 163), c(130, 123, 86),
@@ -120,15 +120,14 @@ index 55a46db9d73885ea967ac929013906b687e476bb..b99796629100c7d5fff1b7f84026001e
          temp.getRGB(0, 0, temp.getWidth(), temp.getHeight(), pixels, 0, temp.getWidth());
  
          byte[] result = new byte[temp.getWidth() * temp.getHeight()];
-+        // Pufferfish start
++        // Elixir start
 +        if (!SIMDDetection.isEnabled) {
          for (int i = 0; i < pixels.length; i++) {
              result[i] = matchColor(new Color(pixels[i], true));
          }
 +        } else {
-+            gg.pufferfish.pufferfish.simd.VectorMapPalette.matchColorVectorized(pixels, result);
++            gg.elixirmc.elixir.simd.VectorMapPalette.matchColorVectorized(pixels, result);
 +        }
-+        // Pufferfish end
++        // Elixir end
          return result;
      }
- 
