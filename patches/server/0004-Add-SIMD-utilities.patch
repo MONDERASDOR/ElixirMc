@@ -1,8 +1,8 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Kevin Raneri <kevin.raneri@gmail.com>
-Date: Tue, 8 Feb 2022 12:56:23 -0500
-Subject: [PATCH] Add SIMD utilities
+From: Monderasdor <monderasdor@gmail.com>
+Subject: [PATCH] Advanced SIMD Vectorization Utilities
 
+Adds Java Vector API support for performance-critical operations
 
 diff --git a/build.gradle.kts b/build.gradle.kts
 index 5dda946f673b91ce171626a5588e2cf7a37fe23b..1bb33b64bd73c8ea591c3ffdf5573c7c55a520f3 100644
@@ -13,49 +13,56 @@ index 5dda946f673b91ce171626a5588e2cf7a37fe23b..1bb33b64bd73c8ea591c3ffdf5573c7c
  }
  
 +
-+// Pufferfish Start
++// Elixir Start - Vector API Support
 +tasks.withType<JavaCompile> {
 +    val compilerArgs = options.compilerArgs
 +    compilerArgs.add("--add-modules=jdk.incubator.vector")
++    compilerArgs.add("--enable-preview")
 +}
-+// Pufferfish End
++// Elixir End
 +
  tasks.jar {
      archiveClassifier.set("dev")
  
-diff --git a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
+diff --git a/src/main/java/gg/elixirmc/elixir/ElixirConfig.java b/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
 index deb52c185705c4b4186c7bae02f2a827620c20ca..84389e2e01b4e548ef402044f1f05db887d829bf 100644
---- a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
-+++ b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
+--- a/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
++++ b/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
 @@ -1,5 +1,6 @@
- package gg.pufferfish.pufferfish;
+ package gg.elixirmc.elixir;
  
-+import gg.pufferfish.pufferfish.simd.SIMDDetection;
++import gg.elixirmc.elixir.simd.SIMDDetection;
  import java.io.File;
  import java.io.IOException;
  import java.lang.reflect.Method;
-@@ -72,6 +73,25 @@ public class PufferfishConfig {
+@@ -72,6 +73,31 @@ public class ElixirConfig {
  		updates++;
  		
  		config.save(configFile);
 +		
-+		// Attempt to detect vectorization
++		// Vector API detection and configuration
 +		try {
-+			SIMDDetection.isEnabled = SIMDDetection.canEnable(PufferfishLogger.LOGGER);
++			SIMDDetection.isEnabled = SIMDDetection.canEnable(ElixirLogger.LOGGER);
 +			SIMDDetection.versionLimited = SIMDDetection.getJavaVersion() < 17 || SIMDDetection.getJavaVersion() > 21;
-+		} catch (NoClassDefFoundError | Exception ignored) {
-+			ignored.printStackTrace();
++		} catch (NoClassDefFoundError | Exception e) {
++			ElixirLogger.LOGGER.log(Level.WARNING, "Failed to detect SIMD capabilities", e);
 +		}
 +		
 +		if (SIMDDetection.isEnabled) {
-+			PufferfishLogger.LOGGER.info("SIMD operations detected as functional. Will replace some operations with faster versions.");
++			ElixirLogger.LOGGER.info("╔══════════════════════════════════════╗");
++			ElixirLogger.LOGGER.info("║   SIMD VECTORIZATION ENABLED        ║");
++			ElixirLogger.LOGGER.info("║   Using hardware-accelerated ops    ║");
++			ElixirLogger.LOGGER.info("╚══════════════════════════════════════╝");
 +		} else if (SIMDDetection.versionLimited) {
-+			PufferfishLogger.LOGGER.warning("Will not enable SIMD! These optimizations are only safely supported on Java 17-21.");
++			ElixirLogger.LOGGER.warning("┌──────────────────────────────────────┐");
++			ElixirLogger.LOGGER.warning("│  SIMD NOT ENABLED: Requires Java 17-21│");
++			ElixirLogger.LOGGER.warning("└──────────────────────────────────────┘");
 +		} else {
-+			PufferfishLogger.LOGGER.warning("SIMD operations are available for your server, but are not configured!");
-+			PufferfishLogger.LOGGER.warning("To enable additional optimizations, add \"--add-modules=jdk.incubator.vector\" to your startup flags, BEFORE the \"-jar\".");
-+			PufferfishLogger.LOGGER.warning("If you have already added this flag, then SIMD operations are not supported on your JVM or CPU.");
-+			PufferfishLogger.LOGGER.warning("Debug: Java: " + System.getProperty("java.version") + ", test run: " + SIMDDetection.testRun);
++			ElixirLogger.LOGGER.warning("┌─────────────────────────────────────────────────────────────┐");
++			ElixirLogger.LOGGER.warning("│  SIMD AVAILABLE BUT NOT ENABLED!                            │");
++			ElixirLogger.LOGGER.warning("│  Add these JVM flags for optimal performance:               │");
++			ElixirLogger.warning("│  \"--add-modules=jdk.incubator.vector --enable-preview\"            │");
++			ElixirLogger.LOGGER.warning("└─────────────────────────────────────────────────────────────┘");
 +		}
  	}
  	
