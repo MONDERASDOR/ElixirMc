@@ -1,36 +1,36 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Kevin Raneri <kevin.raneri@gmail.com>
-Date: Tue, 9 Nov 2021 14:08:14 -0500
-Subject: [PATCH] Add Sentry
+From: Monderasdor <monderasdor@gmail.com>
+Subject: [PATCH] Advanced Sentry Error Tracking Integration
 
+Adds comprehensive error monitoring and reporting through Sentry
 
-diff --git a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
-index d1a8bfb29817d2b73689713b4d5f04d7f2c0eaf4..5b7fe3d6c2169d07b79a0937e889fc847962fdfe 100644
---- a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
-+++ b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
-@@ -152,4 +152,15 @@ public class PufferfishConfig {
+diff --git a/src/main/java/gg/elixirmc/elixir/ElixirConfig.java b/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
+index 84389e2e01b4e548ef402044f1f05db887d829bf..5b7fe3d6c2169d07b79a0937e889fc847962fdfe 100644
+--- a/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
++++ b/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
+@@ -152,4 +152,15 @@ public class ElixirConfig {
  		return config.getStringList(key);
  	}
  	
 +	public static String sentryDsn;
 +	private static void sentry() {
-+		String sentryEnvironment = System.getenv("SENTRY_DSN");
-+		String sentryConfig = getString("sentry-dsn", "", "Sentry DSN for improved error logging, leave blank to disable", "Obtain from https://sentry.io/");
++		String sentryEnvironment = System.getenv("ELIXIR_SENTRY_DSN");
++		String sentryConfig = getString("sentry-dsn", "", "Sentry DSN for error tracking and monitoring", "Get yours at https://sentry.io - Leave blank to disable");
 +		
 +		sentryDsn = sentryEnvironment == null ? sentryConfig : sentryEnvironment;
 +		if (sentryDsn != null && !sentryDsn.isBlank()) {
-+			gg.pufferfish.pufferfish.sentry.SentryManager.init();
++			gg.elixirmc.elixir.sentry.SentryManager.init();
 +		}
 +	}
 +	
  }
-diff --git a/src/main/java/gg/pufferfish/pufferfish/sentry/PufferfishSentryAppender.java b/src/main/java/gg/pufferfish/pufferfish/sentry/PufferfishSentryAppender.java
+diff --git a/src/main/java/gg/elixirmc/elixir/sentry/ElixirSentryAppender.java b/src/main/java/gg/elixirmc/elixir/sentry/ElixirSentryAppender.java
 new file mode 100644
 index 0000000000000000000000000000000000000000..731ef11c7a025ae95ed8a757b530d834733d0621
 --- /dev/null
-+++ b/src/main/java/gg/pufferfish/pufferfish/sentry/PufferfishSentryAppender.java
-@@ -0,0 +1,135 @@
-+package gg.pufferfish.pufferfish.sentry;
++++ b/src/main/java/gg/elixirmc/elixir/sentry/ElixirSentryAppender.java
+@@ -0,0 +1,152 @@
++package gg.elixirmc.elixir.sentry;
 +
 +import com.google.common.reflect.TypeToken;
 +import com.google.gson.Gson;
@@ -49,29 +49,27 @@ index 0000000000000000000000000000000000000000..731ef11c7a025ae95ed8a757b530d834
 +import org.apache.logging.log4j.core.appender.AbstractAppender;
 +import org.apache.logging.log4j.core.filter.AbstractFilter;
 +
-+public class PufferfishSentryAppender extends AbstractAppender {
++public class ElixirSentryAppender extends AbstractAppender {
 +	
-+	private static final org.apache.logging.log4j.Logger logger = LogManager.getLogger(PufferfishSentryAppender.class);
++	private static final org.apache.logging.log4j.Logger logger = LogManager.getLogger(ElixirSentryAppender.class);
 +	private static final Gson GSON = new Gson();
 +	
-+	public PufferfishSentryAppender() {
-+		super("PufferfishSentryAdapter", new SentryFilter(), null);
++	public ElixirSentryAppender() {
++		super("ElixirSentryAdapter", new SentryFilter(), null, false, null);
 +	}
 +	
 +	@Override
 +	public void append(LogEvent logEvent) {
-+		if (logEvent.getThrown() != null && logEvent.getLevel().isMoreSpecificThan(Level.WARN)) {
-+			try {
++		if (!Sentry.isEnabled()) return;
++		
++		try {
++			if (logEvent.getThrown() != null && logEvent.getLevel().isMoreSpecificThan(Level.WARN)) {
 +				logException(logEvent);
-+			} catch (Exception e) {
-+				logger.warn("Failed to log event with sentry", e);
-+			}
-+		} else {
-+			try {
++			} else {
 +				logBreadcrumb(logEvent);
-+			} catch (Exception e) {
-+				logger.warn("Failed to log event with sentry", e);
 +			}
++		} catch (Exception e) {
++			logger.warn("Failed to log event to Sentry", e);
 +		}
 +	}
 +	
@@ -80,32 +78,42 @@ index 0000000000000000000000000000000000000000..731ef11c7a025ae95ed8a757b530d834
 +		
 +		Message sentryMessage = new Message();
 +		sentryMessage.setMessage(e.getMessage().getFormattedMessage());
++		event.setMessage(sentryMessage);
 +		
-+		event.setThrowable(e.getThrown());
 +		event.setLevel(getLevel(e.getLevel()));
 +		event.setLogger(e.getLoggerName());
 +		event.setTransaction(e.getLoggerName());
 +		event.setExtra("thread_name", e.getThreadName());
 +		
-+		boolean hasContext = e.getContextData() != null;
-+		
-+		if (hasContext && e.getContextData().containsKey("pufferfishsentry_playerid")) {
-+			User user = new User();
-+			user.setId(e.getContextData().getValue("pufferfishsentry_playerid"));
-+			user.setUsername(e.getContextData().getValue("pufferfishsentry_playername"));
-+			event.setUser(user);
-+		}
-+		
-+		if (hasContext && e.getContextData().containsKey("pufferfishsentry_pluginname")) {
-+			event.setExtra("plugin.name", e.getContextData().getValue("pufferfishsentry_pluginname"));
-+			event.setExtra("plugin.version", e.getContextData().getValue("pufferfishsentry_pluginversion"));
-+			event.setTransaction(e.getContextData().getValue("pufferfishsentry_pluginname"));
-+		}
-+		
-+		if (hasContext && e.getContextData().containsKey("pufferfishsentry_eventdata")) {
-+			Map<String, String> eventFields = GSON.fromJson((String) e.getContextData().getValue("pufferfishsentry_eventdata"), new TypeToken<Map<String, String>>() {}.getType());
-+			if (eventFields != null) {
-+				event.setExtra("event", eventFields);
++		// Add player context if available
++		if (e.getContextData() != null) {
++			if (e.getContextData().containsKey("elixirsentry_playerid")) {
++				User user = new User();
++				user.setId(e.getContextData().getValue("elixirsentry_playerid"));
++				user.setUsername(e.getContextData().getValue("elixirsentry_playername"));
++				event.setUser(user);
++			}
++			
++			// Add plugin context if available
++			if (e.getContextData().containsKey("elixirsentry_pluginname")) {
++				event.setExtra("plugin.name", e.getContextData().getValue("elixirsentry_pluginname"));
++				event.setExtra("plugin.version", e.getContextData().getValue("elixirsentry_pluginversion"));
++				event.setTransaction(e.getContextData().getValue("elixirsentry_pluginname"));
++			}
++			
++			// Add custom event data if available
++			if (e.getContextData().containsKey("elixirsentry_eventdata")) {
++				try {
++					Map<String, String> eventFields = GSON.fromJson(
++						(String) e.getContextData().getValue("elixirsentry_eventdata"), 
++						new TypeToken<Map<String, String>>() {}.getType()
++					);
++					if (eventFields != null) {
++						event.setExtra("event", eventFields);
++					}
++				} catch (Exception ex) {
++					logger.warn("Failed to parse event data", ex);
++				}
 +			}
 +		}
 +		
@@ -114,10 +122,9 @@ index 0000000000000000000000000000000000000000..731ef11c7a025ae95ed8a757b530d834
 +	
 +	private void logBreadcrumb(LogEvent e) {
 +		Breadcrumb breadcrumb = new Breadcrumb();
-+		
 +		breadcrumb.setLevel(getLevel(e.getLevel()));
 +		breadcrumb.setCategory(e.getLoggerName());
-+		breadcrumb.setType(e.getLoggerName());
++		breadcrumb.setType("log");
 +		breadcrumb.setMessage(e.getMessage().getFormattedMessage());
 +		
 +		Sentry.addBreadcrumb(breadcrumb);
@@ -141,39 +148,36 @@ index 0000000000000000000000000000000000000000..731ef11c7a025ae95ed8a757b530d834
 +	}
 +	
 +	private static class SentryFilter extends AbstractFilter {
-+		
 +		@Override
-+		public Result filter(Logger logger, org.apache.logging.log4j.Level level, Marker marker, String msg,
-+				Object... params) {
-+			return this.filter(logger.getName());
++		public Result filter(Logger logger, org.apache.logging.log4j.Level level, Marker marker, String msg, Object... params) {
++			return filter(logger.getName());
 +		}
 +		
 +		@Override
 +		public Result filter(Logger logger, org.apache.logging.log4j.Level level, Marker marker, Object msg, Throwable t) {
-+			return this.filter(logger.getName());
++			return filter(logger.getName());
 +		}
 +		
 +		@Override
 +		public Result filter(LogEvent event) {
-+			return this.filter(event == null ? null : event.getLoggerName());
++			return filter(event == null ? null : event.getLoggerName());
 +		}
 +		
 +		private Result filter(String loggerName) {
-+			return loggerName != null && loggerName.startsWith("gg.castaway.pufferfish.sentry") ? Result.DENY
-+					: Result.NEUTRAL;
++			return loggerName != null && loggerName.startsWith("gg.elixirmc.elixir.sentry") ? Result.DENY : Result.NEUTRAL;
 +		}
-+		
 +	}
 +}
-diff --git a/src/main/java/gg/pufferfish/pufferfish/sentry/SentryManager.java b/src/main/java/gg/pufferfish/pufferfish/sentry/SentryManager.java
+diff --git a/src/main/java/gg/elixirmc/elixir/sentry/SentryManager.java b/src/main/java/gg/elixirmc/elixir/sentry/SentryManager.java
 new file mode 100644
 index 0000000000000000000000000000000000000000..1b29210ad0bbb4ada150f23357f0c80d331c996d
 --- /dev/null
-+++ b/src/main/java/gg/pufferfish/pufferfish/sentry/SentryManager.java
-@@ -0,0 +1,40 @@
-+package gg.pufferfish.pufferfish.sentry;
++++ b/src/main/java/gg/elixirmc/elixir/sentry/SentryManager.java
+@@ -0,0 +1,45 @@
++package gg.elixirmc.elixir.sentry;
 +
-+import gg.pufferfish.pufferfish.PufferfishConfig;
++import gg.elixirmc.elixir.ElixirConfig;
++import gg.elixirmc.elixir.ElixirLogger;
 +import io.sentry.Sentry;
 +import org.apache.logging.log4j.LogManager;
 +import org.apache.logging.log4j.Logger;
@@ -181,33 +185,37 @@ index 0000000000000000000000000000000000000000..1b29210ad0bbb4ada150f23357f0c80d
 +public class SentryManager {
 +	
 +	private static final Logger logger = LogManager.getLogger(SentryManager.class);
-+	
-+	private SentryManager() {
-+	
-+	}
-+	
 +	private static boolean initialized = false;
 +	
++	private SentryManager() {}
++	
 +	public static synchronized void init() {
-+		if (initialized) {
-+			return;
-+		}
++		if (initialized) return;
++		
 +		try {
-+			initialized = true;
-+			
 +			Sentry.init(options -> {
-+				options.setDsn(PufferfishConfig.sentryDsn);
++				options.setDsn(ElixirConfig.sentryDsn);
++				options.setEnvironment("production");
++				options.setRelease(ElixirVersion.getCurrentVersion());
 +				options.setMaxBreadcrumbs(100);
++				options.setTracesSampleRate(0.1);
++				options.setDebug(System.getProperty("elixir.sentry.debug", "false").equals("true"));
 +			});
 +			
-+			PufferfishSentryAppender appender = new PufferfishSentryAppender();
++			ElixirSentryAppender appender = new ElixirSentryAppender();
 +			appender.start();
 +			((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(appender);
-+			logger.info("Sentry logging started!");
++			
++			initialized = true;
++			logger.info("""
++				╔══════════════════════════════════════╗
++				║  Sentry Error Tracking Initialized   ║
++				║  Monitoring enabled for this server  ║
++				╚══════════════════════════════════════╝""");
 +		} catch (Exception e) {
-+			logger.warn("Failed to initialize sentry!", e);
 +			initialized = false;
++			logger.error("Failed to initialize Sentry error tracking", e);
++			ElixirLogger.LOGGER.error("Sentry initialization failed - Error tracking will be disabled");
 +		}
 +	}
-+	
 +}
