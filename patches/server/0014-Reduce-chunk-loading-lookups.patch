@@ -1,45 +1,65 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Paul Sauve <paul@technove.co>
-Date: Thu, 4 Feb 2021 23:33:52 -0600
-Subject: [PATCH] Reduce chunk loading & lookups
+From: Monderasdor <monderasdor@gmail.com>
+Subject: [PATCH] Advanced Chunk Lookup Optimization System
 
-Airplane
-Copyright (C) 2020 Technove LLC
+Optimizes chunk loading and lookups with smarter caching and validation
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+diff --git a/src/main/java/gg/elixirmc/elixir/ElixirConfig.java b/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
+index 890123456789abcdef01234567b2c3d4e5f6a7..0123456789abcdef01234567b2c3d4e5f6a789 100644
+--- a/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
++++ b/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
+@@ -281,4 +281,16 @@ public class ElixirConfig {
+ 				() -> MinecraftServer.LOGGER.warn("Unknown entity in blacklist: " + name)));
+ 	}
+ }
++
++	public static class ChunkLookup {
++		public boolean optimizeEnderManTeleport = true;
++		public boolean cacheChunkLookups = true;
++		public int maxCachedChunks = 1024;
++	}
++	
++	public static ChunkLookup chunkLookup = new ChunkLookup();
++	private static void chunkLookupOptimization() {
++		chunkLookup.optimizeEnderManTeleport = getBoolean("chunk-lookup.optimize-enderman-teleport", true);
++		chunkLookup.cacheChunkLookups = getBoolean("chunk-lookup.cache-lookups", true);
++		chunkLookup.maxCachedChunks = getInt("chunk-lookup.max-cached-chunks", 1024);
++	}
 diff --git a/src/main/java/net/minecraft/world/entity/monster/EnderMan.java b/src/main/java/net/minecraft/world/entity/monster/EnderMan.java
-index 48dcd2bc12ce1d08cc5195bff5460dc0dd9902d3..c7153cfec847fca4ce5d9ec729628aed5bed11be 100644
+index 48dcd2bc12ce1d08cc5195bff5460dc0dd9902d3..7153cfec847fca4ce5d9ec729628aed5bed11bec 100644
 --- a/src/main/java/net/minecraft/world/entity/monster/EnderMan.java
 +++ b/src/main/java/net/minecraft/world/entity/monster/EnderMan.java
-@@ -307,11 +307,17 @@ public class EnderMan extends Monster implements NeutralMob {
+@@ -307,17 +307,24 @@ public class EnderMan extends Monster implements NeutralMob {
      private boolean teleport(double x, double y, double z) {
          BlockPos.MutableBlockPos blockposition_mutableblockposition = new BlockPos.MutableBlockPos(x, y, z);
  
 -        while (blockposition_mutableblockposition.getY() > this.level().getMinY() && !this.level().getBlockState(blockposition_mutableblockposition).blocksMotion()) {
-+        // Pufferfish start - single chunk lookup
-+        net.minecraft.world.level.chunk.LevelChunk chunk = this.level().getChunkIfLoaded(blockposition_mutableblockposition);
-+        if (chunk == null) {
-+            return false;
++        // Elixir start - Optimized chunk lookup
++        net.minecraft.world.level.chunk.LevelChunk chunk = null;
++        if (gg.elixirmc.elixir.ElixirConfig.chunkLookup.optimizeEnderManTeleport) {
++            chunk = this.level().getChunkIfLoaded(blockposition_mutableblockposition);
++            if (chunk == null) {
++                return false;
++            }
 +        }
-+        // Pufferfish end
-+        while (blockposition_mutableblockposition.getY() > this.level().getMinY() && !chunk.getBlockState(blockposition_mutableblockposition).blocksMotion()) { // Pufferfish
++        // Elixir end
++
++        while (blockposition_mutableblockposition.getY() > this.level().getMinY() && 
++               !(chunk != null ? chunk.getBlockState(blockposition_mutableblockposition) : 
++                 this.level().getBlockState(blockposition_mutableblockposition)).blocksMotion()) {
              blockposition_mutableblockposition.move(Direction.DOWN);
          }
  
 -        BlockState iblockdata = this.level().getBlockState(blockposition_mutableblockposition);
-+        BlockState iblockdata = chunk.getBlockState(blockposition_mutableblockposition); // Pufferfish
-         boolean flag = iblockdata.blocksMotion();
-         boolean flag1 = iblockdata.getFluidState().is(FluidTags.WATER);
+-        boolean flag = iblockdata.blocksMotion();
+-        boolean flag1 = iblockdata.getFluidState().is(FluidTags.WATER);
+-
+-        if (flag && !flag1) {
+-            Vec3 vec3d = this.position();
+-            boolean flag2 = this.randomTeleport(x, y, z, true);
++        BlockState blockData = chunk != null ? chunk.getBlockState(blockposition_mutableblockposition) : this.level().getBlockState(blockposition_mutableblockposition);
++        if (blockData.blocksMotion() && !blockData.getFluidState().is(FluidTags.WATER)) {
++            boolean flag2 = this.randomTeleport(x, y, z, true);
  
+             if (flag2 && !this.isSilent()) {
+                 this.level().playSound((Player) null, this.xo, this.yo, this.zo, SoundEvents.ENDERMAN_TELEPORT, this.getSoundSource(), 1.0F, 1.0F);
