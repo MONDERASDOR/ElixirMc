@@ -28,8 +28,8 @@
 git clone https://github.com/MONDERASDOR/ElixirMc.git
 cd ElixirMc
 
-# Run the automated build
-./build.sh
+# Run the automated build in scripts folder
+./apatchs.sh
 
 # Your elixir server will be :
 # Elixir-1.21.4-Alpha.jar
@@ -43,7 +43,10 @@ cd ElixirMc
 - **Smart TPS Control** - Better than Pufferfish's TPS catchup
 - **Zero-Allocation AI** - 40% faster mob AI processing
 - **Chunk Load Management** - Prevents chunk loading lag spikes
-- **Async Entity Tracking** - Reduced main thread load
+- **Async Entity Tracking** - Reduced main thread loading
+- **Better optimization** - improved the optimization in gameplay.
+- **Maintaining vanilla mechanics** - Maintenance of the normal game mechanics and delays.
+  
 
 ### Customization Options
 ```yaml
