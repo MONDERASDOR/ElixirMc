@@ -1,42 +1,63 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Kevin Raneri <kevin.raneri@gmail.com>
-Date: Tue, 9 Nov 2021 14:21:50 -0500
-Subject: [PATCH] Add option to disable books
+From: Monderasdor <monderasdor@gmail.com>
+Subject: [PATCH] Advanced Book Security System
 
-Books are commonly the target of duping-related exploits. If you
-anticipate that your server will be an early target of duping attacks in
-the event that new exploits are found, you may want to consider removing
-the ability for non-privileged players to edit books. This patch allows
-you to easily disable books, should you want to preemptively remove this
-functionality before additional exploits are found.
+Adds configurable book restrictions to prevent exploitation while maintaining functionality
 
-diff --git a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
-index a38b96319fe39e5674b9d0009ac53cba84698e03..c84ef666a896dc0d154610e1e6360ca5def739fd 100644
---- a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
-+++ b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
-@@ -163,4 +163,13 @@ public class PufferfishConfig {
+diff --git a/src/main/java/gg/elixirmc/elixir/ElixirConfig.java b/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
+index c84ef666a896dc0d154610e1e6360ca5def739fd..a1b2c3d4e5f6a7890123456789abcdef01234567 100644
+--- a/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
++++ b/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
+@@ -163,13 +163,23 @@ public class ElixirConfig {
  		}
  	}
  	
-+	public static boolean enableBooks;
-+	private static void books() {
-+		enableBooks = getBoolean("enable-books", true,
-+				"Whether or not books should be writeable.",
-+				"Servers that anticipate being a target for duping may want to consider",
-+				"disabling this option.",
-+				"This can be overridden per-player with the permission pufferfish.usebooks");
+-	public static boolean enableBooks;
+-	private static void books() {
+-		enableBooks = getBoolean("enable-books", true,
+-				"Whether or not books should be writeable.",
+-				"Servers that anticipate being a target for duping may want to consider",
+-				"disabling this option.",
+-				"This can be overridden per-player with the permission elixir.usebooks");
++	public static enum BookRestrictionMode {
++		ENABLED, // Fully enabled
++		RESTRICTED, // Only signed books allowed
++		DISABLED // Completely disabled
 +	}
 +	
++	public static BookRestrictionMode bookRestriction;
++	private static void bookRestrictions() {
++		String mode = getString("book-restrictions", "enabled",
++			"Controls book editing and signing to prevent exploits",
++			"Available options:",
++			"  enabled    - No restrictions (default)",
++			"  restricted - Only allow signing books (no editing unsigned books)",
++			"  disabled   - Completely disable book editing",
++			"Override per-player with permission: elixir.bypassbookrestrictions");
++		
++		bookRestriction = BookRestrictionMode.valueOf(mode.toUpperCase());
+ 	}
+ 	
  }
 diff --git a/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index b5d5dbc50a7b8c40739a15f164ffd08fdc534f9c..a58d4a39e794bceec773edebf60af28d49076eaf 100644
+index a58d4a39e794bceec773edebf60af28d49076eaf..b2c3d4e5f6a7890123456789abcdef01234567 100644
 --- a/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-@@ -1172,6 +1172,7 @@ public class ServerGamePacketListenerImpl extends ServerCommonPacketListenerImpl
+@@ -1172,7 +1172,16 @@ public class ServerGamePacketListenerImpl extends ServerCommonPacketListenerImpl
  
      @Override
      public void handleEditBook(ServerboundEditBookPacket packet) {
-+        if (!gg.pufferfish.pufferfish.PufferfishConfig.enableBooks && !this.player.getBukkitEntity().hasPermission("pufferfish.usebooks")) return; // Pufferfish
+-        if (!gg.pufferfish.pufferfish.PufferfishConfig.enableBooks && !this.player.getBukkitEntity().hasPermission("pufferfish.usebooks")) return; // Pufferfish
++        // Elixir start - Advanced book restrictions
++        if (!this.player.getBukkitEntity().hasPermission("elixir.bypassbookrestrictions")) {
++            switch (gg.elixirmc.elixir.ElixirConfig.bookRestriction) {
++                case DISABLED -> { return; }
++                case RESTRICTED -> {
++                    if (!packet.getBook().isSigned()) return;
++                }
++            }
++        }
++        // Elixir end
          // Paper start - Book size limits
          final io.papermc.paper.configuration.type.number.IntOr.Disabled pageMax = io.papermc.paper.configuration.GlobalConfiguration.get().itemValidation.bookSize.pageMax;
          if (!this.cserver.isPrimaryThread() && pageMax.enabled()) {
