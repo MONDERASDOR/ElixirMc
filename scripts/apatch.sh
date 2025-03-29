@@ -7,7 +7,7 @@
 echo "📦 Setting up ElixirMC builder..."
 MC_VERSION="1.21.4"
 BUILD_DIR="elixir-build"
-PATCH_DIR="elixir-patches"
+PATCH_DIR="patches"
 
 # 2. DOWNLOAD PAPERMC
 echo "⬇️ Downloading PaperMC ${MC_VERSION}..."
