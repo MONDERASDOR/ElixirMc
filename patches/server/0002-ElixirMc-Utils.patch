@@ -1,41 +1,41 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Kevin Raneri <kevin.raneri@gmail.com>
-Date: Tue, 9 Nov 2021 23:36:56 -0500
-Subject: [PATCH] Pufferfish Utils
+From: Monderasdor <monderasdor@gmail.com>
+Subject: [PATCH] Elixir Advanced Utilities
 
+Advanced asynchronous utilities and concurrent collections for ElixirMC
 
-diff --git a/src/main/java/gg/pufferfish/pufferfish/PufferfishLogger.java b/src/main/java/gg/pufferfish/pufferfish/PufferfishLogger.java
+diff --git a/src/main/java/gg/elixirmc/elixir/ElixirLogger.java b/src/main/java/gg/elixirmc/elixir/ElixirLogger.java
 new file mode 100644
 index 0000000000000000000000000000000000000000..53f2df00c6809618a9ee3d2ea72e85e8052fbcf1
 --- /dev/null
-+++ b/src/main/java/gg/pufferfish/pufferfish/PufferfishLogger.java
++++ b/src/main/java/gg/elixirmc/elixir/ElixirLogger.java
 @@ -0,0 +1,16 @@
-+package gg.pufferfish.pufferfish;
++package gg.elixirmc.elixir;
 +
 +import java.util.logging.Level;
 +import java.util.logging.Logger;
 +import org.bukkit.Bukkit;
 +
-+public class PufferfishLogger extends Logger {
-+    public static final PufferfishLogger LOGGER = new PufferfishLogger();
++public class ElixirLogger extends Logger {
++    public static final ElixirLogger LOGGER = new ElixirLogger();
 +
-+    private PufferfishLogger() {
-+        super("Pufferfish", null);
++    private ElixirLogger() {
++        super("Elixir", null);
 +
 +        setParent(Bukkit.getLogger());
 +        setLevel(Level.ALL);
 +    }
 +}
-diff --git a/src/main/java/gg/pufferfish/pufferfish/util/AsyncExecutor.java b/src/main/java/gg/pufferfish/pufferfish/util/AsyncExecutor.java
+diff --git a/src/main/java/gg/elixirmc/elixir/util/AsyncExecutor.java b/src/main/java/gg/elixirmc/elixir/util/AsyncExecutor.java
 new file mode 100644
 index 0000000000000000000000000000000000000000..8e5323d5d9af25c8a85c4b34a6be76cfc54384cf
 --- /dev/null
-+++ b/src/main/java/gg/pufferfish/pufferfish/util/AsyncExecutor.java
++++ b/src/main/java/gg/elixirmc/elixir/util/AsyncExecutor.java
 @@ -0,0 +1,73 @@
-+package gg.pufferfish.pufferfish.util;
++package gg.elixirmc.elixir.util;
 +
 +import com.google.common.collect.Queues;
-+import gg.pufferfish.pufferfish.PufferfishLogger;
++import gg.elixirmc.elixir.ElixirLogger;
 +import java.util.Queue;
 +import java.util.concurrent.locks.Condition;
 +import java.util.concurrent.locks.Lock;
@@ -84,7 +84,7 @@ index 0000000000000000000000000000000000000000..8e5323d5d9af25c8a85c4b34a6be76cf
 +			} catch (InterruptedException e) {
 +				Thread.currentThread().interrupt();
 +			} catch (Exception e) {
-+				PufferfishLogger.LOGGER.log(Level.SEVERE, e, () -> "Failed to execute async job for thread " + thread.getName());
++				ElixirLogger.LOGGER.log(Level.SEVERE, e, () -> "Failed to execute async job for thread " + thread.getName());
 +			}
 +		}
 +	}
@@ -105,13 +105,13 @@ index 0000000000000000000000000000000000000000..8e5323d5d9af25c8a85c4b34a6be76cf
 +	}
 +	
 +}
-diff --git a/src/main/java/gg/pufferfish/pufferfish/util/AsyncPlayerAreaMap.java b/src/main/java/gg/pufferfish/pufferfish/util/AsyncPlayerAreaMap.java
+diff --git a/src/main/java/gg/elixirmc/elixir/util/AsyncPlayerAreaMap.java b/src/main/java/gg/elixirmc/elixir/util/AsyncPlayerAreaMap.java
 new file mode 100644
 index 0000000000000000000000000000000000000000..fdcb62d12164024a5f354d60cc863821a18d1b2a
 --- /dev/null
-+++ b/src/main/java/gg/pufferfish/pufferfish/util/AsyncPlayerAreaMap.java
++++ b/src/main/java/gg/elixirmc/elixir/util/AsyncPlayerAreaMap.java
 @@ -0,0 +1,31 @@
-+package gg.pufferfish.pufferfish.util;
++package gg.elixirmc.elixir.util;
 +
 +import com.destroystokyo.paper.util.misc.PlayerAreaMap;
 +import com.destroystokyo.paper.util.misc.PooledLinkedHashSets;
@@ -142,13 +142,13 @@ index 0000000000000000000000000000000000000000..fdcb62d12164024a5f354d60cc863821
 +	}
 +
 +}
-diff --git a/src/main/java/gg/pufferfish/pufferfish/util/IterableWrapper.java b/src/main/java/gg/pufferfish/pufferfish/util/IterableWrapper.java
+diff --git a/src/main/java/gg/elixirmc/elixir/util/IterableWrapper.java b/src/main/java/gg/elixirmc/elixir/util/IterableWrapper.java
 new file mode 100644
 index 0000000000000000000000000000000000000000..c1929840254a3e6d721816f4a20415bea1742580
 --- /dev/null
-+++ b/src/main/java/gg/pufferfish/pufferfish/util/IterableWrapper.java
++++ b/src/main/java/gg/elixirmc/elixir/util/IterableWrapper.java
 @@ -0,0 +1,20 @@
-+package gg.pufferfish.pufferfish.util;
++package gg.elixirmc.elixir.util;
 +
 +import java.util.Iterator;
 +import org.jetbrains.annotations.NotNull;
@@ -168,13 +168,13 @@ index 0000000000000000000000000000000000000000..c1929840254a3e6d721816f4a20415be
 +	}
 +
 +}
-diff --git a/src/main/java/gg/pufferfish/pufferfish/util/Long2ObjectOpenHashMapWrapper.java b/src/main/java/gg/pufferfish/pufferfish/util/Long2ObjectOpenHashMapWrapper.java
+diff --git a/src/main/java/gg/elixirmc/elixir/util/Long2ObjectOpenHashMapWrapper.java b/src/main/java/gg/elixirmc/elixir/util/Long2ObjectOpenHashMapWrapper.java
 new file mode 100644
 index 0000000000000000000000000000000000000000..facd55463d44cb7e3d2ca6892982f5497b8dded1
 --- /dev/null
-+++ b/src/main/java/gg/pufferfish/pufferfish/util/Long2ObjectOpenHashMapWrapper.java
++++ b/src/main/java/gg/elixirmc/elixir/util/Long2ObjectOpenHashMapWrapper.java
 @@ -0,0 +1,40 @@
-+package gg.pufferfish.pufferfish.util;
++package gg.elixirmc.elixir.util;
 +
 +import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 +import java.util.Map;
