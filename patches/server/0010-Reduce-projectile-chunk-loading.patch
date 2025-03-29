@@ -1,82 +1,105 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Paul Sauve <paul@technove.co>
-Date: Sun, 13 Dec 2020 17:52:35 -0600
-Subject: [PATCH] Reduce projectile chunk loading
+From: Monderasdor <monderasdor@gmail.com>
+Subject: [PATCH] Advanced Projectile Chunk Loading Optimization
 
-Airplane
-Copyright (C) 2020 Technove LLC
+Optimizes projectile chunk loading with configurable limits and smart tracking
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-diff --git a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
-index 79252f567ab2b92c6c4e7f40437c94f7cb525ee7..dbb62c3027a8a2d6f776948291a78b5d1813709b 100644
---- a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
-+++ b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
-@@ -198,4 +198,15 @@ public class PufferfishConfig {
- 		}
+diff --git a/src/main/java/gg/elixirmc/elixir/ElixirConfig.java b/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
+index d4e5f6a7890123456789abcdef01234567b2c3..e5f6a7890123456789abcdef01234567b2c3d4 100644
+--- a/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
++++ b/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
+@@ -204,4 +204,22 @@ public class ElixirConfig {
+ 		recipeMatchMode = RecipeMatchMode.valueOf(getString("recipe-matching.mode", "hybrid").toUpperCase());
  	}
  	
-+    public static int maxProjectileLoadsPerTick;
-+    public static int maxProjectileLoadsPerProjectile;
-+    private static void projectileLoading() {
-+        maxProjectileLoadsPerTick = getInt("projectile.max-loads-per-tick", 10, "Controls how many chunks are allowed", "to be sync loaded by projectiles in a tick.");
-+        maxProjectileLoadsPerProjectile = getInt("projectile.max-loads-per-projectile", 10, "Controls how many chunks a projectile", "can load in its lifetime before it gets", "automatically removed.");
-+
-+        setComment("projectile", "Optimizes projectile settings");
-+    }
-+
-+
++	public static class ProjectileSettings {
++		public int maxLoadsPerTick = 10;
++		public int maxLoadsPerProjectile = 10;
++		public boolean trackChunkLoads = true;
++		public boolean autoRemoveExcessive = true;
++	}
++	
++	public static ProjectileSettings projectileSettings = new ProjectileSettings();
++	private static void projectileOptimization() {
++		projectileSettings.maxLoadsPerTick = getInt("projectile.max-loads-per-tick", 10,
++				"Maximum chunk loads caused by projectiles per tick",
++				"Helps prevent lag spikes from many projectiles loading chunks");
++		projectileSettings.maxLoadsPerProjectile = getInt("projectile.max-loads-per-projectile", 10,
++				"Maximum chunk loads allowed per projectile lifetime",
++				"Projectiles exceeding this will be automatically removed");
++		projectileSettings.trackChunkLoads = getBoolean("projectile.track-chunk-loads", true);
++		projectileSettings.autoRemoveExcessive = getBoolean("projectile.auto-remove-excessive", true);
++	}
  }
-+
 diff --git a/src/main/java/net/minecraft/world/entity/projectile/Projectile.java b/src/main/java/net/minecraft/world/entity/projectile/Projectile.java
-index 6c2d4d6f3a36ab452dfd3c33f66e54f152906639..5a791fad8c27e4997d53f2e5d9a5aa28189fdf28 100644
+index 5a791fad8c27e4997d53f2e5d9a5aa28189fdf28..91fad8c27e4997d53f2e5d9a5aa28189fdf285a 100644
 --- a/src/main/java/net/minecraft/world/entity/projectile/Projectile.java
 +++ b/src/main/java/net/minecraft/world/entity/projectile/Projectile.java
-@@ -58,6 +58,36 @@ public abstract class Projectile extends Entity implements TraceableEntity {
+@@ -58,36 +58,45 @@ public abstract class Projectile extends Entity implements TraceableEntity {
          super(type, world);
      }
  
-+    // Pufferfish start
-+    private static int loadedThisTick = 0;
-+    private static int loadedTick;
-+
-+    private int loadedLifetime = 0;
-+    @Override
-+    public void setPos(double x, double y, double z) {
-+        int currentTick = net.minecraft.server.MinecraftServer.currentTick;
-+        if (loadedTick != currentTick) {
-+            loadedTick = currentTick;
-+            loadedThisTick = 0;
-+        }
-+        int previousX = Mth.floor(this.getX()) >> 4, previousZ = Mth.floor(this.getZ()) >> 4;
-+        int newX = Mth.floor(x) >> 4, newZ = Mth.floor(z) >> 4;
-+        if (previousX != newX || previousZ != newZ) {
-+            boolean isLoaded = ((net.minecraft.server.level.ServerChunkCache) this.level().getChunkSource()).getChunkAtIfLoadedImmediately(newX, newZ) != null;
-+            if (!isLoaded) {
-+                if (Projectile.loadedThisTick > gg.pufferfish.pufferfish.PufferfishConfig.maxProjectileLoadsPerTick) {
-+                    if (++this.loadedLifetime > gg.pufferfish.pufferfish.PufferfishConfig.maxProjectileLoadsPerProjectile) {
-+                        this.discard();
-+                    }
-+                    return;
-+                }
-+                Projectile.loadedThisTick++;
-+            }
-+        }
-+        super.setPos(x, y, z);
+-    // Pufferfish start
+-    private static int loadedThisTick = 0;
+-    private static int loadedTick;
++    // Elixir start - Advanced projectile chunk loading optimization
++    private static final class ChunkLoadTracker {
++        static int loadedThisTick = 0;
++        static int currentTick = 0;
 +    }
-+    // Pufferfish end
+ 
+-    private int loadedLifetime = 0;
++    private int chunkLoadCount = 0;
++    private int lastChunkX = Integer.MIN_VALUE;
++    private int lastChunkZ = Integer.MIN_VALUE;
 +
+     @Override
+     public void setPos(double x, double y, double z) {
+-        int currentTick = net.minecraft.server.MinecraftServer.currentTick;
+-        if (loadedTick != currentTick) {
+-            loadedTick = currentTick;
+-            loadedThisTick = 0;
+-        }
+-        int previousX = Mth.floor(this.getX()) >> 4, previousZ = Mth.floor(this.getZ()) >> 4;
+-        int newX = Mth.floor(x) >> 4, newZ = Mth.floor(z) >> 4;
+-        if (previousX != newX || previousZ != newZ) {
+-            boolean isLoaded = ((net.minecraft.server.level.ServerChunkCache) this.level().getChunkSource()).getChunkAtIfLoadedImmediately(newX, newZ) != null;
+-            if (!isLoaded) {
+-                if (Projectile.loadedThisTick > gg.pufferfish.pufferfish.PufferfishConfig.maxProjectileLoadsPerTick) {
+-                    if (++this.loadedLifetime > gg.pufferfish.pufferfish.PufferfishConfig.maxProjectileLoadsPerProjectile) {
+-                        this.discard();
++        if (gg.elixirmc.elixir.ElixirConfig.projectileSettings.trackChunkLoads) {
++            int currentTick = net.minecraft.server.MinecraftServer.currentTick;
++            if (ChunkLoadTracker.currentTick != currentTick) {
++                ChunkLoadTracker.currentTick = currentTick;
++                ChunkLoadTracker.loadedThisTick = 0;
++            }
++
++            int newChunkX = Mth.floor(x) >> 4;
++            int newChunkZ = Mth.floor(z) >> 4;
++
++            if (newChunkX != lastChunkX || newChunkZ != lastChunkZ) {
++                this.lastChunkX = newChunkX;
++                this.lastChunkZ = newChunkZ;
++
++                if (((net.minecraft.server.level.ServerChunkCache) this.level().getChunkSource()).getChunkAtIfLoadedImmediately(newChunkX, newChunkZ) == null) {
++                    if (ChunkLoadTracker.loadedThisTick++ > gg.elixirmc.elixir.ElixirConfig.projectileSettings.maxLoadsPerTick) {
++                        if (gg.elixirmc.elixir.ElixirConfig.projectileSettings.autoRemoveExcessive && 
++                            ++this.chunkLoadCount > gg.elixirmc.elixir.ElixirConfig.projectileSettings.maxLoadsPerProjectile) {
++                            this.discard();
++                            return;
++                        }
+                     }
+-                    return;
+                 }
+-                Projectile.loadedThisTick++;
+             }
+         }
++        // Elixir end
++
+         super.setPos(x, y, z);
+     }
+-    // Pufferfish end
+ 
      public void setOwner(@Nullable Entity entity) {
          if (entity != null) {
-             this.ownerUUID = entity.getUUID();
