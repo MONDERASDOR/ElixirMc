@@ -21,7 +21,7 @@
 - Java 17+ (Recommended: Temurin 17)
 - Git
 - 4GB+ RAM (8GB recommended for building)
-
+-Gradle
 ### Build Instructions
 ```bash
 # Clone the build tools
