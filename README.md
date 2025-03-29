@@ -1,4 +1,4 @@
-# <img src="https://imgur.com/a/GZr9vUZ" width="32" height="32"/> ElixirMC - Next-Gen Minecraft Server Software  
+# <img src="https://imgur.com/8Owq3w0.png" width="32" height="32"/> ElixirMC - Next-Gen Minecraft Server Software  
 
 **Created by Sunpowder**  
 *A high-performance Minecraft server optimized for modern hardware*  
@@ -13,10 +13,6 @@
 | Customization   | ⭐⭐   | ⭐⭐⭐      | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐      |
 | Optimization    | ⭐⭐⭐  | ⭐⭐⭐⭐     | ⭐⭐⭐   | ⭐⭐⭐⭐⭐     |
 | Stability       | ⭐⭐⭐⭐ | ⭐⭐⭐      | ⭐⭐⭐⭐  | ⭐⭐⭐⭐⭐     |
-
-![Performance Benchmark](https://i.imgur.com/FAKEGRAPH.png)  
-*Real-world performance comparison (lower is better)*
-
 ---
 
 ## 🛠️ Building ElixirMC
