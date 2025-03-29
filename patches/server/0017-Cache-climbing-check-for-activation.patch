@@ -1,30 +1,46 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Paul Sauve <paul@technove.co>
-Date: Mon, 26 Apr 2021 10:52:56 -0500
-Subject: [PATCH] Cache climbing check for activation
+From: Monderasdor <monderasdor@gmail.com>
+Subject: [PATCH] Optimize activation range checks with cached climbing state
 
+ElixirMC
+Copyright (C) 2023 ElixirMC
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
 diff --git a/src/main/java/net/minecraft/world/entity/LivingEntity.java b/src/main/java/net/minecraft/world/entity/LivingEntity.java
 index aa4b8bc675ca8cbee5890164fa39ad59c3a3137e..e21e549e8102477aae599487acc6dd39616d6c26 100644
 --- a/src/main/java/net/minecraft/world/entity/LivingEntity.java
 +++ b/src/main/java/net/minecraft/world/entity/LivingEntity.java
-@@ -2133,6 +2133,20 @@ public abstract class LivingEntity extends Entity implements Attackable {
+@@ -2133,6 +2133,24 @@ public abstract class LivingEntity extends Entity implements Attackable {
          return this.lastClimbablePos;
      }
  
-+
-+    // Pufferfish start
++    // ElixirMC start - Optimize climbing checks
 +    private boolean cachedOnClimable = false;
 +    private BlockPos lastClimbingPosition = null;
++    private int lastClimbingTick = 0;
 +
 +    public boolean onClimableCached() {
-+        if (!this.blockPosition().equals(this.lastClimbingPosition)) {
++        BlockPos currentPos = this.blockPosition();
++        int currentTick = this.level().getGameTime();
++        
++        // Only recalculate if position changed or every 20 ticks to handle block state changes
++        if (!currentPos.equals(this.lastClimbingPosition) || currentTick - this.lastClimbingTick > 20) {
 +            this.cachedOnClimable = this.onClimbable();
-+            this.lastClimbingPosition = this.blockPosition();
++            this.lastClimbingPosition = currentPos;
++            this.lastClimbingTick = currentTick;
 +        }
 +        return this.cachedOnClimable;
 +    }
-+    // Pufferfish end
++    // ElixirMC end
 +
      public boolean onClimbable() {
          if (this.isSpectator()) {
@@ -38,7 +54,7 @@ index b39b37052face9b250538e1fbbe7efe974359553..bc525c7843b9cc0f7705c0dc6795c05f
          {
              LivingEntity living = (LivingEntity) entity;
 -            if ( living.onClimbable() || living.jumping || living.hurtTime > 0 || living.activeEffects.size() > 0 || living.isFreezing()) // Paper
-+            if ( living.onClimableCached() || living.jumping || living.hurtTime > 0 || living.activeEffects.size() > 0 || living.isFreezing() ) // Paper // Pufferfish - use cached
++            if ( living.onClimableCached() || living.jumping || living.hurtTime > 0 || living.activeEffects.size() > 0 || living.isFreezing() ) // Paper // ElixirMC - use cached
              {
                  return 1; // Paper
              }
