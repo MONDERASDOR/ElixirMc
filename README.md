@@ -94,7 +94,7 @@ ElixirMC is licensed under GPL-3.0 - *Because open source matters*
 > - Sunpowder, Lead Developer
 
 ---
-🐛 **Issue Tracker**: [GitHub Issues]  
+🐛 **Issue Tracker**: [GitHub Issues](https://github.com/MONDERASDOR/ElixirMc/issues/) 
 
 *Not affiliated with Mojang or Microsoft*  
 
