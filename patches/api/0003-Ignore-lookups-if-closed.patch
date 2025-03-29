@@ -1,8 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Paul <paul@technove.co>
-Date: Tue, 6 Jul 2021 17:51:18 -0500
-Subject: [PATCH] Ignore lookups if closed
-
+From: Monderasdor <monderasdor@gmail.com>
+Subject: [PATCH] Add thread-safe closed state handling for plugin classloader
 
 diff --git a/src/main/java/org/bukkit/plugin/java/PluginClassLoader.java b/src/main/java/org/bukkit/plugin/java/PluginClassLoader.java
 index 569bf32b8378712ce22fdee67279b14714a7aa54..90953bfc81168068a281be4d2d3942d5e7dd69ff 100644
@@ -12,7 +10,7 @@ index 569bf32b8378712ce22fdee67279b14714a7aa54..90953bfc81168068a281be4d2d3942d5
      private io.papermc.paper.plugin.provider.classloader.PluginClassLoaderGroup classLoaderGroup; // Paper
      public io.papermc.paper.plugin.provider.entrypoint.DependencyContext dependencyContext; // Paper
  
-+    private boolean closed = false; // Pufferfish
++    private volatile boolean closed = false; // ElixirMC - Make thread-safe
 +
      static {
          ClassLoader.registerAsParallelCapable();
@@ -22,7 +20,7 @@ index 569bf32b8378712ce22fdee67279b14714a7aa54..90953bfc81168068a281be4d2d3942d5
          Class<?> result = classes.get(name);
  
 -        if (result == null) {
-+        if (result == null && !this.closed) { // Pufferfish
++        if (result == null && !this.closed) { // ElixirMC - Skip lookup if closed
              String path = name.replace('.', '/').concat(".class");
              JarEntry entry = jar.getJarEntry(path);
  
@@ -30,7 +28,7 @@ index 569bf32b8378712ce22fdee67279b14714a7aa54..90953bfc81168068a281be4d2d3942d5
              this.setClass(name, result); // Paper
          }
  
-+        if (result == null) throw new ClassNotFoundException(name); // Pufferfish
++        if (result == null) throw new ClassNotFoundException(name); // ElixirMC - Consistent behavior
          return result;
      }
  
@@ -38,7 +36,7 @@ index 569bf32b8378712ce22fdee67279b14714a7aa54..90953bfc81168068a281be4d2d3942d5
              // Paper end
              super.close();
          } finally {
-+            this.closed = true; // Pufferfish
++            this.closed = true; // ElixirMC - Mark as closed
              jar.close();
          }
      }
