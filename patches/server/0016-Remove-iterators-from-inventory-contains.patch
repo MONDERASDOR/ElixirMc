@@ -1,38 +1,54 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Paul Sauve <paul@technove.co>
-Date: Sat, 13 Mar 2021 12:24:41 -0600
-Subject: [PATCH] Remove iterators from inventory contains
+From: Monderasdor <monderasdor@gmail.com>
+Subject: [PATCH] Optimize inventory contains checks
 
+ElixirMC
+Copyright (C) 2023 ElixirMC
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
 diff --git a/src/main/java/net/minecraft/world/entity/player/Inventory.java b/src/main/java/net/minecraft/world/entity/player/Inventory.java
 index ad82e5aeb565b23c3ec565fa60e1f31d1710bd4e..3b99ef35fbffc010fb4333773bcced50ca9f0a1a 100644
 --- a/src/main/java/net/minecraft/world/entity/player/Inventory.java
 +++ b/src/main/java/net/minecraft/world/entity/player/Inventory.java
-@@ -649,6 +649,8 @@ public class Inventory implements Container, Nameable {
+@@ -649,21 +649,22 @@ public class Inventory implements Container, Nameable {
      }
  
      public boolean contains(ItemStack stack) {
-+        // Pufferfish start - don't allocate iterators
-+        /*
-         Iterator iterator = this.compartments.iterator();
- 
-         while (iterator.hasNext()) {
-@@ -663,6 +665,18 @@ public class Inventory implements Container, Nameable {
+-        Iterator iterator = this.compartments.iterator();
+-
+-        while (iterator.hasNext()) {
+-            List<ItemStack> list = (List) iterator.next();
+-            Iterator iterator1 = list.iterator();
+-
+-            while (iterator1.hasNext()) {
+-                ItemStack itemstack1 = (ItemStack) iterator1.next();
+-
+-                if (!itemstack1.isEmpty() && ItemStack.isSameItemSameComponents(itemstack1, stack)) {
++        // ElixirMC start - Optimize inventory contains checks
++        // Replace iterator-based implementation with direct array access
++        for (int i = 0, compartmentsSize = this.compartments.size(); i < compartmentsSize; i++) {
++            List<ItemStack> compartment = this.compartments.get(i);
++            
++            // Use cached size and direct get() calls
++            for (int j = 0, compartmentSize = compartment.size(); j < compartmentSize; j++) {
++                ItemStack item = compartment.get(j);
++                
++                // Skip empty items and check for matches
++                if (!item.isEmpty() && ItemStack.isSameItemSameComponents(item, stack)) {
+                     return true;
                  }
              }
          }
-+         */
-+        for (int i = 0; i < this.compartments.size(); i++) {
-+            List<ItemStack> list = this.compartments.get(i);
-+            for (int j = 0; j < list.size(); j++) {
-+                ItemStack itemstack1 = list.get(j);
-+
-+                if (!itemstack1.isEmpty() && ItemStack.isSameItemSameComponents(itemstack1, stack)) {
-+                    return true;
-+                }
-+            }
-+        }
-+        // Pufferfish end
- 
+-
++        // ElixirMC end
          return false;
      }
