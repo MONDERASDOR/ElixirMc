@@ -1,8 +1,19 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Paul <paul@technove.co>
-Date: Fri, 2 Jul 2021 18:25:18 -0500
-Subject: [PATCH] Reduce entity allocations
+From: Monderasdor <monderasdor@gmail.com>
+Subject: [PATCH] Optimize entity memory usage and allocations
 
+ElixirMC
+Copyright (C) 2023 ElixirMC
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
 diff --git a/src/main/java/net/minecraft/world/entity/Entity.java b/src/main/java/net/minecraft/world/entity/Entity.java
 index 9277aa442f371117886716f6ee5aa474b6578387..0a0d004699eeaae12852b197b32a449a86de3028 100644
@@ -10,9 +21,9 @@ index 9277aa442f371117886716f6ee5aa474b6578387..0a0d004699eeaae12852b197b32a449a
 +++ b/src/main/java/net/minecraft/world/entity/Entity.java
 @@ -391,6 +391,7 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
      private final int despawnTime; // Paper - entity despawn time limit
-     public boolean activatedPriorityReset = false; // Pufferfish - DAB
-     public int activatedPriority = gg.pufferfish.pufferfish.PufferfishConfig.maximumActivationPrio; // Pufferfish - DAB (golf score)
-+    public final BlockPos.MutableBlockPos cachedBlockPos = new BlockPos.MutableBlockPos(); // Pufferfish - reduce entity allocations
+     public boolean activatedPriorityReset = false; // Paper - entity activation
+     public int activatedPriority = gg.elixirmc.elixir.ElixirConfig.maximumActivationPrio; // ElixirMC - Dynamic Activation
++    public final BlockPos.MutableBlockPos cachedBlockPos = new BlockPos.MutableBlockPos(); // ElixirMC - Reduce position allocations
  
      public void setOrigin(@javax.annotation.Nonnull Location location) {
          this.origin = location.toVector();
@@ -24,11 +35,11 @@ index 94d04a20f97405e02d7cccaabadc7a7e86e336f7..31aa4221de653f0695b21d438964bae2
      private final Set<AttributeInstance> attributesToSync = new ObjectOpenHashSet<>();
      private final Set<AttributeInstance> attributesToUpdate = new ObjectOpenHashSet<>();
      private final AttributeSupplier supplier;
-+    private final java.util.function.Function<Holder<Attribute>, AttributeInstance> createInstance; // Pufferfish
++    private final java.util.function.Function<Holder<Attribute>, AttributeInstance> createInstance; // ElixirMC - Cache attribute creation
  
      public AttributeMap(AttributeSupplier defaultAttributes) {
          this.supplier = defaultAttributes;
-+        this.createInstance = attributex -> this.supplier.createInstance(this::onAttributeModified, attributex); // Pufferfish
++        this.createInstance = attributex -> this.supplier.createInstance(this::onAttributeModified, attributex); // ElixirMC - Cache lambda
      }
  
      private void onAttributeModified(AttributeInstance instance) {
@@ -40,7 +51,7 @@ index 94d04a20f97405e02d7cccaabadc7a7e86e336f7..31aa4221de653f0695b21d438964bae2
      @Nullable
      public AttributeInstance getInstance(Holder<Attribute> attribute) {
 -        return this.attributes.computeIfAbsent(attribute, attributex -> this.supplier.createInstance(this::onAttributeModified, attributex));
-+        return this.attributes.computeIfAbsent(attribute, this.createInstance); // Pufferfish - cache lambda, as for some reason java allocates it anyways
++        return this.attributes.computeIfAbsent(attribute, this.createInstance); // ElixirMC - Use cached lambda
      }
  
      public boolean hasAttribute(Holder<Attribute> attribute) {
