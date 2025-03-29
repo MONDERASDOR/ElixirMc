@@ -1,24 +1,38 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Kevin Raneri <kevin.raneri@gmail.com>
-Date: Sat, 11 Dec 2021 22:20:45 -0500
-Subject: [PATCH] Throttle goal selector during inactive ticking
+From: Monderasdor <monderasdor@gmail.com>
+Subject: [PATCH] Optimize AI goal selector during inactive ticking
 
+ElixirMC
+Copyright (C) 2023 ElixirMC
 
-diff --git a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+diff --git a/src/main/java/gg/elixirmc/elixir/ElixirConfig.java b/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
 index 38c3cc8a813322bddee6c74f1c419a7747b741c6..04cc1985b4afd05740934bf639509f44ddad36e6 100644
---- a/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
-+++ b/src/main/java/gg/pufferfish/pufferfish/PufferfishConfig.java
-@@ -253,6 +253,13 @@ public class PufferfishConfig {
+--- a/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
++++ b/src/main/java/gg/elixirmc/elixir/ElixirConfig.java
+@@ -253,6 +253,15 @@ public class ElixirConfig {
  
          setComment("dab", "Optimizes entity brains when", "they're far away from the player");
      }
 +    
 +    public static boolean throttleInactiveGoalSelectorTick;
-+	private static void inactiveGoalSelectorThrottle() {
-+		throttleInactiveGoalSelectorTick = getBoolean("inactive-goal-selector-throttle", "inactive-goal-selector-disable", true,
-+				"Throttles the AI goal selector in entity inactive ticks.",
-+				"This can improve performance by a few percent, but has minor gameplay implications.");
-+	}
++    public static int inactiveGoalSelectorThrottleRate = 20;
++    private static void aiOptimizations() {
++        throttleInactiveGoalSelectorTick = getBoolean("ai-optimizations.throttle-inactive-goal-selector", true,
++                "Throttles the AI goal selector for inactive entities",
++                "This can improve performance by reducing unnecessary AI calculations");
++        inactiveGoalSelectorThrottleRate = getInt("ai-optimizations.inactive-goal-selector-throttle-rate", 20,
++                "How often (in ticks) to process AI goals for inactive entities");
++    }
  
      public static URI profileWebUrl;
      private static void profilerOptions() {
@@ -26,18 +40,20 @@ diff --git a/src/main/java/net/minecraft/world/entity/Mob.java b/src/main/java/n
 index 205494d837504c719dafce8eea30c4c92c8fbbd2..237eed7259f0cedf5b96ea54c195c3359d286064 100644
 --- a/src/main/java/net/minecraft/world/entity/Mob.java
 +++ b/src/main/java/net/minecraft/world/entity/Mob.java
-@@ -235,11 +235,13 @@ public abstract class Mob extends LivingEntity implements EquipmentUser, Leashab
+@@ -235,11 +235,14 @@ public abstract class Mob extends LivingEntity implements EquipmentUser, Leashab
          return this.lookControl;
      }
  
-+    int _pufferfish_inactiveTickDisableCounter = 0; // Pufferfish - throttle inactive goal selector ticking
++    // ElixirMC start - Optimize inactive AI processing
++    private int elixirInactiveTickCounter = 0;
      // Paper start
      @Override
      public void inactiveTick() {
          super.inactiveTick();
 -        if (this.goalSelector.inactiveTick(this.activatedPriority, true)) { // Pufferfish - pass activated priroity
-+        boolean isThrottled = gg.pufferfish.pufferfish.PufferfishConfig.throttleInactiveGoalSelectorTick && _pufferfish_inactiveTickDisableCounter++ % 20 != 0; // Pufferfish - throttle inactive goal selector ticking
-+        if (this.goalSelector.inactiveTick(this.activatedPriority, true) && !isThrottled) { // Pufferfish - pass activated priroity // Pufferfish - throttle inactive goal selector ticking
++        boolean shouldThrottle = ElixirConfig.throttleInactiveGoalSelectorTick && 
++            (elixirInactiveTickCounter++ % ElixirConfig.inactiveGoalSelectorThrottleRate != 0);
++        if (this.goalSelector.inactiveTick(this.activatedPriority, true) && !shouldThrottle) { // ElixirMC - throttle inactive AI
              this.goalSelector.tick();
          }
          if (this.targetSelector.inactiveTick(this.activatedPriority, true)) { // Pufferfish - pass activated priority
